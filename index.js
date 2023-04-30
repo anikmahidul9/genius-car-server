@@ -3,7 +3,7 @@ const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 app.use(cors());
@@ -25,14 +25,59 @@ const client = new MongoClient(uri, {
 
 async function run() {
   try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+   
+    const serviceCollection = client.db('genius-car').collection('services');
+    const orderCollection = client.db('genius-car').collection('orders');
+    app.get('/service', async(req,res)=>{
+      const query = {}
+      const cursor= serviceCollection.find(query);
+      const services= await cursor.toArray();
+      res.send(services);
+    })
+    app.get('/service/:id',async (req,res)=>{
+      const id = req.params.id;
+      const query = {_id: new ObjectId(id)}
+      const service = await serviceCollection.findOne(query);
+      res.send(service);
+    })
+    app.get('/order',async (req,res)=>{
+      let query = {};
+      if(req.query.email){
+        query ={
+          email: req.query.email
+        }
+      }
+      const cursor= orderCollection.find(query);
+      const orders= await cursor.toArray();
+      res.send(orders);
+    })
+  
+    app.post('/order',async (req,res)=>{
+      const order = req.body;
+      const result = await orderCollection.insertOne(order);
+      res.send(result);
+    })
+    app.patch('/order/:id', async(req,res)=>{
+      const id = req.params.id;
+      const status= req.body.status;
+      const query = {_id: new ObjectId(id)}
+      const updatedDoc = {
+        $set: { status:status}
+      }
+      const result = await orderCollection.updateOne(query,updatedDoc);
+      res.send(result);
+    })
+      app.delete('/order/:id',async (req,res)=>{
+            const id = req.params.id;
+            const query = {_id:new ObjectId(id)};
+            //console.log('Trying delete user', id)
+            const result = await orderCollection.deleteOne(query)
+            res.send(result);
+            console.log(result);
+        })
   } finally {
     // Ensures that the client will close when you finish/error
-    await client.close();
+   // await client.close();
   }
 }
 run().catch(console.dir);
